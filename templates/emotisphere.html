@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmotiSphere Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #a0aebd28;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #eyes-container {
+            display: flex;
+            justify-content: space-around;
+            width: 600px;
+            margin-bottom: 100px;
+            margin-top: 100px;
+        }
+        .eye {
+            width: 110px;
+            height: 110px;
+            background-color: #ffffff77;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #e2e2e270;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(215, 228, 220, 0.315);
+            border-radius: 70% / 60% 50% 70% 60%;
+            position: relative;
+            rotate: 10px;
+        }
+        .pupil {
+            width: 120px;
+            height: 40px;
+            background-color: #e2e4d367;
+            border-radius: 45%;
+            transition: all 0.3s ease;
+            position: absolute;
+            bottom: 5px;
+        }
+        #voice-visualizer {
+            width: 1000px;
+            height: 100px;
+            margin: 20px 0;
+            position: relative;
+            background-color: #00003300;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            opacity: 0; /* Hide visualizer initially */
+            transition: opacity 0.3s ease;
+        }
+        .rectangle {
+            width: 4px;
+            background-color: #21f8e677;
+            height: 2px; /* Start with a very small height */
+            transition: height 0.1s ease;
+        }
+        #conversation {
+            width: 97%;
+            height: 250px;
+            border: 1px solid #eeeded86;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: white;
+            margin-bottom: 20px;
+            border-radius: 2%;
+            box-shadow: 0 0 10px rgba(143, 197, 164, 0.534);
+        }
+        #input-container {
+            width: 90%;
+            display: flex;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #send-button, #voice-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 10%;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="eyes-container">
+        <div class="eye"><div class="pupil"></div></div>
+        <div class="eye"><div class="pupil"></div></div>
+    </div>
+    <div id="voice-visualizer">
+        <div class="sphere"></div>
+    </div>
+    <div id="conversation"></div>
+    <div id="input-container">
+        <input type="text" id="user-input" placeholder="Type your message...">
+        <button id="send-button">Send</button>
+        <button id="voice-button">🎤</button>
+    </div>
+
+    <script>
+        const eyes = document.querySelectorAll('.eye');
+        const pupils = document.querySelectorAll('.pupil');
+        const visualizer = document.getElementById('voice-visualizer');
+        const conversation = document.getElementById('conversation');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const voiceButton = document.getElementById('voice-button');
+
+        function moveEyes(e) {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            eyes.forEach((eye) => {
+                const rect = eye.getBoundingClientRect();
+                const eyeX = rect.left + rect.width / 2;
+                const eyeY = rect.top + rect.height / 2;
+                const angle = Math.atan2(mouseY - eyeY, mouseX - eyeX);
+                const distance = Math.min(eye.offsetWidth / 6, Math.hypot(mouseX - eyeX, mouseY - eyeY) / 8);
+                const pupilX = Math.cos(angle) * distance;
+                const pupilY = Math.sin(angle) * distance;
+                eye.querySelector('.pupil').style.transform = `translate(${pupilX}px, ${pupilY}px)`;
+            });
+        }
+
+        document.addEventListener('mousemove', moveEyes);
+
+        const emotions = {
+            neutral: { color: '#4a5e75', pupilSize: '90px' },
+            sceptic: { color: '#00ffff', pupilSize: '85px' },
+            sad: { color: '#00ffff', pupilSize: '95px' },
+            broken: { color: '#ff0000', pupilSize: '80px' },
+            tired: { color: '#00ffff', pupilSize: '100px' },
+            crazy: { color: '#ff00ff', pupilSize: '95px' },
+            wink: { color: '#00ffff', pupilSize: '100px' },
+            surprised: { color: '#00ffff', pupilSize: '110px' },
+            angry: { color: '#ff0000', pupilSize: '95px' },
+            inLove: { color: '#ff69b4', pupilSize: '105px' },
+            happy: { color: '#00ff00', pupilSize: '100px' },
+            denying: { color: '#00ffff', pupilSize: '95px' }
+        };
+
+        function setEmotion(emotion) {
+            const state = emotions[emotion] || emotions.neutral;
+            pupils.forEach((pupil) => {
+                pupil.style.backgroundColor = state.color;
+                pupil.style.width = state.pupilSize;
+                pupil.style.height = state.pupilSize;
+            });
+        }
+
+        const rectangleCount = 60;
+        const rectangles = [];
+
+        // Create rectangles
+        for (let i = 0; i < rectangleCount; i++) {
+            const rectangle = document.createElement('div');
+            rectangle.className = 'rectangle';
+            visualizer.appendChild(rectangle);
+            rectangles.push(rectangle);
+        }
+
+        function animateVisualizer() {
+            rectangles.forEach(rectangle => {
+                const height = Math.random() * 90 + 10; // Random height between 10 and 90
+                rectangle.style.height = `${height}%`;
+            });
+        }
+        let visualizerInterval;
+        let isSpeaking = false;
+
+        function startVisualizer() {
+            if (!isSpeaking) {
+                isSpeaking = true;
+                visualizer.style.opacity = '1'; // Show visualizer
+                visualizerInterval = setInterval(animateVisualizer, 50); // Increased frequency for more vibration
+            }
+        }
+
+        function stopVisualizer() {
+            if (isSpeaking) {
+                isSpeaking = false;
+                clearInterval(visualizerInterval);
+                visualizer.style.opacity = '0'; // Hide visualizer
+                rectangles.forEach(rectangle => {
+                    rectangle.style.height = '2px'; // Reset to very small height
+                });
+            }
+        }
+        function addMessage(sender, message) {
+            const messageElement = document.createElement('p');
+            messageElement.textContent = `${sender}: ${message}`;
+            conversation.appendChild(messageElement);
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function speak(text, emotion) {
+            setEmotion(emotion);
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 1.1; // Slightly increased speech rate
+
+            utterance.onstart = () => {
+                startVisualizer();
+            };
+
+            utterance.onend = () => {
+                stopVisualizer();
+            };
+
+            utterance.onerror = () => {
+                stopVisualizer();
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+
+        sendButton.addEventListener('click', () => {
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage('You', message);
+                userInput.value = '';
+                fetch('/send_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    addMessage('Assistant', data.response);
+                    speak(data.response, data.emotion);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    addMessage('Assistant', 'Sorry, there was an error processing your request.');
+                    setEmotion('broken');
+                });
+            }
+        });
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        voiceButton.addEventListener('click', () => {
+            addMessage('System', 'Listening...');
+            setEmotion('surprised');
+            startVisualizer();
+            
+            fetch('/start_listening', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    stopVisualizer();
+                    if (data.error) {
+                        addMessage('System', data.error);
+                        setEmotion('broken');
+                    } else {
+                        addMessage('You', data.transcript);
+                        return fetch('/send_message', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ message: data.transcript }),
+                        });
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    addMessage('Assistant', data.response);
+                    speak(data.response, data.emotion);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    addMessage('Assistant', 'Sorry, there was an error processing your voice request.');
+                    setEmotion('broken');
+                });
+        });
+    </script>
+</body>
+</html>
